@@ -20,7 +20,6 @@
     .metric-value.red { color: #f07070; }
     .metric-value.teal { color: #60c0b0; }
     .section-title { font-size: 11px; color: #7a8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-
     .controls { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
     .search-box { flex: 1; min-width: 180px; background: #162330; border: 0.5px solid #2a4a62; border-radius: 6px; padding: 7px 12px; color: #e8edf2; font-size: 12px; outline: none; }
     .search-box::placeholder { color: #3a5a72; }
@@ -33,13 +32,16 @@
     .filter-btn.high.active { background: #3d1a1a; border-color: #f07070; color: #f07070; }
     .filter-btn.med.active { background: #3d2d0a; border-color: #f0b060; color: #f0b060; }
     .filter-btn.low.active { background: #0a2d1a; border-color: #60c090; color: #60c090; }
-
     .table-wrap { background: #162330; border-radius: 8px; border: 0.5px solid #1e3347; overflow: hidden; margin-bottom: 20px; }
-    .table-info { padding: 8px 12px; font-size: 11px; color: #7a8a99; border-bottom: 0.5px solid #1a2a3a; }
+    .table-info { padding: 8px 12px; font-size: 11px; color: #7a8a99; border-bottom: 0.5px solid #1a2a3a; display: flex; justify-content: space-between; align-items: center; }
+    .pagination { display: flex; gap: 6px; align-items: center; }
+    .page-btn { background: #1a2d3d; border: 0.5px solid #2a4a62; border-radius: 4px; padding: 3px 10px; font-size: 11px; color: #7a8a99; cursor: pointer; }
+    .page-btn:hover { color: #e8edf2; border-color: #60c0b0; }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th { background: #1a2d3d; color: #7a8a99; font-weight: 400; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 12px; text-align: left; cursor: pointer; user-select: none; white-space: nowrap; }
     th:hover { color: #c8d8e8; }
-    th .sort-icon { margin-left: 4px; opacity: 0.4; font-style: normal; }
+    th .sort-icon { margin-left: 4px; opacity: 0.4; }
     th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; color: #60c0b0; }
     td { padding: 8px 12px; border-top: 0.5px solid #1a2a3a; color: #c8d8e8; }
     tr:hover td { background: #1a2d3d; }
@@ -49,7 +51,7 @@
     .risk-low { background: #0a2d1a; color: #60c090; border: 0.5px solid #1a5d3a; }
     .prob { color: #7ab3d4; font-weight: 500; }
     .no-results { padding: 32px; text-align: center; color: #3a5a72; font-size: 13px; }
-
+    .loading { padding: 32px; text-align: center; color: #3a5a72; font-size: 13px; }
     .bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .action-box { background: #162330; border-radius: 8px; border: 0.5px solid #1e3347; padding: 14px; }
     .action-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 0.5px solid #1a2a3a; }
@@ -67,7 +69,6 @@
     .footer { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     .footer-text { font-size: 10px; color: #3a5a72; }
     .model-tag { font-size: 10px; color: #3a5a72; background: #111d28; border: 0.5px solid #1e3347; border-radius: 4px; padding: 2px 8px; }
-
     @media (max-width: 600px) {
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .bottom { grid-template-columns: 1fr; }
@@ -76,7 +77,6 @@
 </head>
 <body>
 <div class="dash">
-
   <div class="header">
     <div>
       <div class="title">Bank Customer Churn Prediction</div>
@@ -84,17 +84,16 @@
     </div>
     <div class="badge">Random Forest · n=100 · depth=10</div>
   </div>
-
   <div class="metrics">
     <div class="metric">
       <div class="metric-label">Customers analysed</div>
-      <div class="metric-value">2,000</div>
+      <div class="metric-value" id="m-total">—</div>
       <div class="metric-sub">test set</div>
     </div>
     <div class="metric">
       <div class="metric-label">Predicted to churn</div>
-      <div class="metric-value red">410</div>
-      <div class="metric-sub">20.5% of total</div>
+      <div class="metric-value red" id="m-churn">—</div>
+      <div class="metric-sub" id="m-churn-pct">loading...</div>
     </div>
     <div class="metric">
       <div class="metric-label">F1 score</div>
@@ -107,11 +106,9 @@
       <div class="metric-sub">strong separation</div>
     </div>
   </div>
-
   <div class="section-title">Customers flagged for retention outreach</div>
-
   <div class="controls">
-    <input class="search-box" type="text" id="searchInput" placeholder="Search by name or customer ID...">
+    <input class="search-box" type="text" id="searchInput" placeholder="Search by name, ID or country...">
     <div class="filter-btns">
       <button class="filter-btn all active" onclick="setFilter('ALL')">All</button>
       <button class="filter-btn high" onclick="setFilter('HIGH RISK')">High risk</button>
@@ -119,52 +116,52 @@
       <button class="filter-btn low" onclick="setFilter('LOW RISK')">Low risk</button>
     </div>
   </div>
-
   <div class="table-wrap">
-    <div class="table-info" id="tableInfo">Showing all 15 customers</div>
-    <table id="churnTable">
+    <div class="table-info">
+      <span id="tableInfo">Loading data...</span>
+      <div class="pagination" id="pagination"></div>
+    </div>
+    <table>
       <thead>
         <tr>
-          <th onclick="sortTable(0)" id="th0">Customer ID <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(1)" id="th1">Surname <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(2)" id="th2">Age <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(3)" id="th3">Geography <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(4)" id="th4">Balance <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(5)" id="th5">Churn probability <i class="sort-icon">&#8597;</i></th>
-          <th onclick="sortTable(6)" id="th6">Risk level <i class="sort-icon">&#8597;</i></th>
+          <th onclick="sortTable(0)" id="th0">Customer ID <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(1)" id="th1">Surname <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(2)" id="th2">Age <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(3)" id="th3">Geography <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(4)" id="th4">Balance <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(5)" id="th5">Churn probability <span class="sort-icon">&#8597;</span></th>
+          <th onclick="sortTable(6)" id="th6">Risk level <span class="sort-icon">&#8597;</span></th>
         </tr>
       </thead>
-      <tbody id="tableBody"></tbody>
+      <tbody id="tableBody"><tr><td colspan="7" class="loading">Loading customers...</td></tr></tbody>
     </table>
     <div class="no-results" id="noResults" style="display:none">No customers match your search or filter.</div>
   </div>
-
   <div class="bottom">
     <div class="action-box">
       <div class="section-title">Recommended actions by risk level</div>
       <div class="action-row">
         <div class="action-dot" style="background:#f07070"></div>
         <div>
-          <div class="action-text">HIGH RISK — 188 customers (&ge;70%)</div>
+          <div class="action-text">HIGH RISK — <span id="a-high">—</span> customers (&ge;70%)</div>
           <div class="action-action">Immediate personal outreach</div>
         </div>
       </div>
       <div class="action-row">
         <div class="action-dot" style="background:#f0b060"></div>
         <div>
-          <div class="action-text">MEDIUM RISK — 293 customers (45–70%)</div>
+          <div class="action-text">MEDIUM RISK — <span id="a-med">—</span> customers (45–70%)</div>
           <div class="action-action">Targeted email / offer campaign</div>
         </div>
       </div>
       <div class="action-row">
         <div class="action-dot" style="background:#60c090"></div>
         <div>
-          <div class="action-text">LOW RISK — remaining customers</div>
+          <div class="action-text">LOW RISK — <span id="a-low">—</span> customers</div>
           <div class="action-action">Standard engagement programme</div>
         </div>
       </div>
     </div>
-
     <div class="model-box">
       <div class="section-title">Model performance</div>
       <div class="model-row">
@@ -204,36 +201,17 @@
       </div>
     </div>
   </div>
-
   <div class="footer">
     <span class="footer-text">Dataset: 10,000 customers · Train 60% / Val 20% / Test 20% · Class imbalance handled with balanced weights</span>
     <span class="model-tag">Random Forest · Scikit-learn · Python</span>
   </div>
-
 </div>
-
 <script>
-const allData = [
-  {id:'15677336', name:'Aitken',    age:57, geo:'Germany', balance:120043, prob:0.960, risk:'HIGH RISK'},
-  {id:'15785367', name:'McGuffog',  age:56, geo:'France',  balance:0,      prob:0.951, risk:'HIGH RISK'},
-  {id:'15716609', name:'L?',        age:54, geo:'Germany', balance:134388, prob:0.950, risk:'HIGH RISK'},
-  {id:'15661275', name:'Wynn',      age:52, geo:'Germany', balance:110791, prob:0.942, risk:'HIGH RISK'},
-  {id:'15767264', name:'Lawson',    age:53, geo:'Germany', balance:117438, prob:0.939, risk:'HIGH RISK'},
-  {id:'15734762', name:'Ignatiev',  age:56, geo:'France',  balance:115895, prob:0.937, risk:'HIGH RISK'},
-  {id:'15746708', name:'Ritchie',   age:55, geo:'Germany', balance:119961, prob:0.936, risk:'HIGH RISK'},
-  {id:'15691504', name:'Yusupova',  age:52, geo:'Germany', balance:124099, prob:0.935, risk:'HIGH RISK'},
-  {id:'15636089', name:'Hs?',       age:51, geo:'Germany', balance:145751, prob:0.933, risk:'HIGH RISK'},
-  {id:'15750731', name:'Trevisani', age:50, geo:'Germany', balance:116309, prob:0.932, risk:'HIGH RISK'},
-  {id:'15663164', name:'Yudin',     age:49, geo:'Germany', balance:116150, prob:0.931, risk:'HIGH RISK'},
-  {id:'15813659', name:'Folliero',  age:56, geo:'France',  balance:0,      prob:0.927, risk:'HIGH RISK'},
-  {id:'15592736', name:'Lucchese',  age:54, geo:'Germany', balance:102994, prob:0.927, risk:'HIGH RISK'},
-  {id:'15813946', name:'Duffy',     age:51, geo:'Germany', balance:104682, prob:0.926, risk:'HIGH RISK'},
-  {id:'15734008', name:'Bartlett',  age:59, geo:'Germany', balance:152581, prob:0.925, risk:'HIGH RISK'},
-];
-
+let allData = [], filtered = [];
 let currentFilter = 'ALL';
-let currentSort = {col: 5, dir: 'desc'};
-let filtered = [...allData];
+let currentSort = { col: 5, dir: 'desc' };
+let currentPage = 1;
+const PAGE_SIZE = 25;
 
 function riskBadge(risk) {
   if (risk === 'HIGH RISK') return '<span class="risk-badge risk-high">HIGH RISK</span>';
@@ -242,20 +220,30 @@ function riskBadge(risk) {
 }
 
 function formatBalance(b) {
-  return b === 0 ? '$0' : '$' + b.toLocaleString();
+  if (!b || b === 0) return '$0';
+  return '$' + Number(b).toLocaleString('en-NZ', { maximumFractionDigits: 0 });
 }
 
-function renderTable() {
+function updateMetrics() {
+  const churned = allData.filter(r => r.predicted === 1).length;
+  document.getElementById('m-total').textContent = allData.length.toLocaleString();
+  document.getElementById('m-churn').textContent = churned.toLocaleString();
+  document.getElementById('m-churn-pct').textContent = ((churned / allData.length) * 100).toFixed(1) + '% of total';
+  document.getElementById('a-high').textContent = allData.filter(r => r.risk === 'HIGH RISK').length.toLocaleString();
+  document.getElementById('a-med').textContent = allData.filter(r => r.risk === 'MEDIUM RISK').length.toLocaleString();
+  document.getElementById('a-low').textContent = allData.filter(r => r.risk === 'LOW RISK').length.toLocaleString();
+}
+
+function applyFilterAndSort() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   filtered = allData.filter(r => {
     const matchFilter = currentFilter === 'ALL' || r.risk === currentFilter;
-    const matchSearch = r.id.includes(search) || r.name.toLowerCase().includes(search) || r.geo.toLowerCase().includes(search);
+    const matchSearch = String(r.id).includes(search) || r.name.toLowerCase().includes(search) || r.geo.toLowerCase().includes(search);
     return matchFilter && matchSearch;
   });
-
+  const cols = ['id','name','age','geo','balance','prob','risk'];
+  const key = cols[currentSort.col];
   filtered.sort((a, b) => {
-    const cols = ['id','name','age','geo','balance','prob','risk'];
-    const key = cols[currentSort.col];
     let va = a[key], vb = b[key];
     if (typeof va === 'string') va = va.toLowerCase();
     if (typeof vb === 'string') vb = vb.toLowerCase();
@@ -263,32 +251,41 @@ function renderTable() {
     if (va > vb) return currentSort.dir === 'asc' ? 1 : -1;
     return 0;
   });
+  currentPage = 1;
+  renderTable();
+}
 
+function renderTable() {
   const tbody = document.getElementById('tableBody');
   const noResults = document.getElementById('noResults');
   const info = document.getElementById('tableInfo');
-
+  const pagination = document.getElementById('pagination');
   if (filtered.length === 0) {
     tbody.innerHTML = '';
     noResults.style.display = 'block';
     info.textContent = 'No results found';
+    pagination.innerHTML = '';
     return;
   }
-
   noResults.style.display = 'none';
-  info.textContent = `Showing ${filtered.length} of ${allData.length} customers`;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, filtered.length);
+  info.textContent = 'Showing ' + (start + 1) + '–' + end + ' of ' + filtered.length + ' customers';
+  tbody.innerHTML = filtered.slice(start, end).map(r =>
+    '<tr><td>' + r.id + '</td><td>' + r.name + '</td><td>' + r.age + '</td><td>' + r.geo + '</td><td>' + formatBalance(r.balance) + '</td><td class="prob">' + (r.prob * 100).toFixed(1) + '%</td><td>' + riskBadge(r.risk) + '</td></tr>'
+  ).join('');
+  pagination.innerHTML =
+    '<button class="page-btn" onclick="goPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '>&larr;</button>' +
+    '<span style="font-size:11px;color:#7a8a99">' + currentPage + ' / ' + totalPages + '</span>' +
+    '<button class="page-btn" onclick="goPage(' + (currentPage + 1) + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '>&rarr;</button>';
+}
 
-  tbody.innerHTML = filtered.map(r => `
-    <tr>
-      <td>${r.id}</td>
-      <td>${r.name}</td>
-      <td>${r.age}</td>
-      <td>${r.geo}</td>
-      <td>${formatBalance(r.balance)}</td>
-      <td class="prob">${(r.prob * 100).toFixed(1)}%</td>
-      <td>${riskBadge(r.risk)}</td>
-    </tr>
-  `).join('');
+function goPage(p) {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderTable();
 }
 
 function setFilter(val) {
@@ -296,7 +293,7 @@ function setFilter(val) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   const map = {'ALL':'all','HIGH RISK':'high','MEDIUM RISK':'med','LOW RISK':'low'};
   document.querySelector('.' + map[val]).classList.add('active');
-  renderTable();
+  applyFilterAndSort();
 }
 
 function sortTable(col) {
@@ -304,18 +301,27 @@ function sortTable(col) {
     currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
   } else {
     currentSort.col = col;
-    currentSort.dir = 'asc';
+    currentSort.dir = col === 5 ? 'desc' : 'asc';
   }
   document.querySelectorAll('th').forEach((th, i) => {
     th.classList.remove('sort-asc','sort-desc');
     if (i === col) th.classList.add('sort-' + currentSort.dir);
   });
-  renderTable();
+  applyFilterAndSort();
 }
 
-document.getElementById('searchInput').addEventListener('input', renderTable);
+document.getElementById('searchInput').addEventListener('input', applyFilterAndSort);
 
-sortTable(5);
+fetch('customers_data.json')
+  .then(r => r.json())
+  .then(data => {
+    allData = data;
+    updateMetrics();
+    applyFilterAndSort();
+  })
+  .catch(() => {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="no-results">Could not load data. Make sure customers_data.json is in the same folder.</td></tr>';
+  });
 </script>
 </body>
 </html>
